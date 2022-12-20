@@ -1,0 +1,41 @@
+name: "Clean Selectel Docker Repository"
+description: "This action will handle clean Selectel Docker registry from old images"
+author: "suncryptjustice <suncrypt@gmail.com>"
+runs:
+  using: "node16"
+  main: "dist/index.js"
+branding:
+  icon: "coffee"
+  color: "frown"
+inputs:
+  userName:
+    description: "Selectel username with access to your project."
+    required: true
+
+  password:
+    description: "Selectel user password"
+    required: true
+
+  projectName:
+    description: "The project user assigned"
+    required: true
+
+  selectelId:
+    description: "Your Selectel Id"
+    required: true
+
+  registryId:
+    description: "Target registry id"
+    required: true
+
+  repositoryName:
+    description: "Target images repository name"
+    required: true
+
+  createdAtLessThen:
+    description: "Date filter. All Images older that this date will be deleted"
+    required: false
+
+  minAmmountToStay:
+    description: "Minimum images to stay in repository"
+    required: false

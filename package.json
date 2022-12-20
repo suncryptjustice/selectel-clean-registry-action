@@ -1,0 +1,33 @@
+{
+  "name": "@suncryptjustice/selectel-clean-registry-action",
+  "version": "1.0.0",
+  "description": "Simple action that clear selectel repository by given criteria",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "ncc build src/index.ts --source-map --minify --license licenses.txt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suncryptjustice/selectel-clean-registry-action.git"
+  },
+  "keywords": [
+    "actions",
+    "selectel",
+    "docker",
+    "github-action"
+  ],
+  "author": "suncryptjustice <suncrypt@gmail.com>",
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "async-retry": "1.3.3",
+    "cross-fetch": "3.1.5"
+  },
+  "devDependencies": {
+    "@types/async-retry": "^1.4.5",
+    "@types/node": "^16.11.26",
+    "@vercel/ncc": "^0.33.3",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.4.4"
+  }
+}
