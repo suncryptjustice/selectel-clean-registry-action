@@ -10,7 +10,6 @@ export default async function run({
   selectelId,
   registryId,
   repositoryName,
-  createdAtLessThen,
   minAmmountToStay,
 }: ActionInterface) {
   try {
@@ -18,17 +17,12 @@ export default async function run({
     Clean Selectel Registry Action
     `);
 
-    if (!createdAtLessThen && !minAmmountToStay) {
-      info("Provide at lest one filter\n");
-      info("Action was skipped");
-      return;
-    }
+    const howManyToStay = parseInt(minAmmountToStay);
 
-    if (createdAtLessThen && !Date.parse(createdAtLessThen)) {
-      throw new Error("Wrong date format");
-    }
-
-    if (minAmmountToStay && !parseInt(minAmmountToStay)) {
+    if (
+      Number.isNaN(howManyToStay) ||
+      (!Number.isNaN(howManyToStay) && howManyToStay < 0)
+    ) {
       throw new Error("Wrong minAmmountToStay format");
     }
 
@@ -52,31 +46,34 @@ export default async function run({
       repositoryName,
     });
 
+    if (!images) {
+      info("Unable to find repository. Go to next step...");
+      return;
+    }
+
     info(
       `Locate ${images.length} images\n\n- - - - - - - - - - - -\n${images.map(
-        (im, i) =>
-          `digest: ${im.digest}\nsize: ${im.size}\n` +
-          (i === images.length - 1 ? "\n" : "- - - - - - - - - - - -\n")
+        (im, i) => {
+          return (
+            `Digest: ${im.digest}\nsize: ${im.size}\ncreatedAt: ${new Date(
+              im.createdAt
+            ).toLocaleDateString("ru-RU")}\n` +
+            (i === images.length - 1 ? "\n" : "- - - - - - - - - - - -\n")
+          );
+        }
       )}`
     );
 
-    const imagesForDelete = images
-      .slice(
-        0,
-        !minAmmountToStay || images.length <= parseInt(minAmmountToStay)
-          ? 0
-          : images.length - parseInt(minAmmountToStay)
-      )
-      .filter((img) => {
-        if (!createdAtLessThen) return img;
-        if (Date.parse(img.createdAt) < Date.parse(createdAtLessThen)) {
-          return true;
-        } else {
-          return true;
-        }
-      });
+    if (images.length <= howManyToStay) {
+      info("Repository don't need to be cleaned");
+      return;
+    } else {
+      info("Start cleaning...");
+    }
 
-    info(`${imagesForDelete.length} images match criteria. Deleting...`);
+    const imagesForDelete = images.slice(0, images.length - howManyToStay);
+
+    info(`Will delete ${imagesForDelete.length} images from repository`);
 
     let mbCleaned =
       imagesForDelete.reduce((p, c) => {
@@ -84,6 +81,7 @@ export default async function run({
       }, 0) /
       1024 /
       1024;
+
     imagesForDelete.forEach(async (image) => {
       retry(
         () =>

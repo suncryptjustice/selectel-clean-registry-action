@@ -32,10 +32,6 @@ inputs:
     description: "Target images repository name"
     required: true
 
-  createdAtLessThen:
-    description: "Date filter. All Images older that this date will be deleted"
-    required: false
-
   minAmmountToStay:
     description: "Minimum images to stay in repository"
-    required: false
+    required: true

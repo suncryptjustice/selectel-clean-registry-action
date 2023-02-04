@@ -7085,21 +7085,25 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const cross_fetch_1 = __importDefault(__nccwpck_require__(9805));
 const listRepositoryImages = ({ token, registryId, repositoryName, }) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
-        try {
-            const res = yield (0, cross_fetch_1.default)(`https://cr.selcloud.ru/api/v1/registries/${registryId}/repositories/${repositoryName}/images`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Auth-Token": token,
-                },
-            });
-            if (!res.ok)
-                throw new Error("Unable to fetch list of images from selectel registry");
+        const res = yield (0, cross_fetch_1.default)(`https://cr.selcloud.ru/api/v1/registries/${registryId}/repositories/${repositoryName}/images`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Auth-Token": token,
+            },
+        });
+        if (!res.ok) {
+            if (res.status === 404) {
+                resolve(null);
+            }
+            else {
+                const errorMessage = yield res.json();
+                reject(errorMessage);
+            }
+        }
+        else {
             const data = yield res.json();
             resolve(data.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)));
-        }
-        catch (error) {
-            reject(error);
         }
     }));
 });
@@ -7123,12 +7127,7 @@ exports.action = {
     selectelId: (0, core_1.getInput)("selectelId"),
     registryId: (0, core_1.getInput)("registryId"),
     repositoryName: (0, core_1.getInput)("repositoryName"),
-    createdAtLessThen: (0, core_1.getInput)("createdAtLessThen")
-        ? (0, core_1.getInput)("createdAtLessThen")
-        : null,
-    minAmmountToStay: (0, core_1.getInput)("minAmmountToStay")
-        ? (0, core_1.getInput)("minAmmountToStay")
-        : null,
+    minAmmountToStay: (0, core_1.getInput)("minAmmountToStay"),
 };
 
 
@@ -7171,21 +7170,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __nccwpck_require__(2186);
 const api_1 = __importDefault(__nccwpck_require__(9343));
 const async_retry_1 = __importDefault(__nccwpck_require__(3415));
-function run({ userName, password, projectName, selectelId, registryId, repositoryName, createdAtLessThen, minAmmountToStay, }) {
+function run({ userName, password, projectName, selectelId, registryId, repositoryName, minAmmountToStay, }) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             (0, core_1.info)(`
     Clean Selectel Registry Action
     `);
-            if (!createdAtLessThen && !minAmmountToStay) {
-                (0, core_1.info)("Provide at lest one filter\n");
-                (0, core_1.info)("Action was skipped");
-                return;
-            }
-            if (createdAtLessThen && !Date.parse(createdAtLessThen)) {
-                throw new Error("Wrong date format");
-            }
-            if (minAmmountToStay && !parseInt(minAmmountToStay)) {
+            const howManyToStay = parseInt(minAmmountToStay);
+            if (Number.isNaN(howManyToStay) ||
+                (!Number.isNaN(howManyToStay) && howManyToStay < 0)) {
                 throw new Error("Wrong minAmmountToStay format");
             }
             (0, core_1.info)("Try to get X-Auth-Token for futher requests...");
@@ -7201,23 +7194,23 @@ function run({ userName, password, projectName, selectelId, registryId, reposito
                 registryId,
                 repositoryName,
             });
-            (0, core_1.info)(`Locale ${images.length} images\n\n- - - - - - - - - - - -\n${images.map((im, i) => `digest: ${im.digest}\nsize: ${im.size}\n` +
-                (i === images.length - 1 ? "\n" : "- - - - - - - - - - - -\n"))}`);
-            const imagesForDelete = images
-                .slice(0, !minAmmountToStay || images.length <= parseInt(minAmmountToStay)
-                ? images.length
-                : images.length - parseInt(minAmmountToStay))
-                .filter((img) => {
-                if (!createdAtLessThen)
-                    return img;
-                if (Date.parse(img.createdAt) < Date.parse(createdAtLessThen)) {
-                    return true;
-                }
-                else {
-                    return true;
-                }
-            });
-            (0, core_1.info)(`${imagesForDelete.length} images match criteria. Deleting...`);
+            if (!images) {
+                (0, core_1.info)("Unable to find repository. Go to next step...");
+                return;
+            }
+            (0, core_1.info)(`Locate ${images.length} images\n\n- - - - - - - - - - - -\n${images.map((im, i) => {
+                return (`Digest: ${im.digest}\nsize: ${im.size}\ncreatedAt: ${new Date(im.createdAt).toLocaleDateString("ru-RU")}\n` +
+                    (i === images.length - 1 ? "\n" : "- - - - - - - - - - - -\n"));
+            })}`);
+            if (images.length <= howManyToStay) {
+                (0, core_1.info)("Repository don't need to be cleaned");
+                return;
+            }
+            else {
+                (0, core_1.info)("Start cleaning...");
+            }
+            const imagesForDelete = images.slice(0, images.length - howManyToStay);
+            (0, core_1.info)(`Will delete ${imagesForDelete.length} images from repository`);
             let mbCleaned = imagesForDelete.reduce((p, c) => {
                 return c.size + p;
             }, 0) /
